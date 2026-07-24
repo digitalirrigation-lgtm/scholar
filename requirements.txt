@@ -1,5 +1,5 @@
 streamlit==1.28.1
-pandas==2.0.3
+pandas==1.5.3
 requests==2.31.0
 beautifulsoup4==4.12.2
-altair==5.0.1
+altair==4.2.2
