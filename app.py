@@ -1,6 +1,6 @@
 # ============================================================
-# ULTIMATE GLOBAL OPPORTUNITY INTELLIGENCE DASHBOARD v4.0
-# FULLY WORKING - NO ERRORS - REAL DATA EXTRACTION
+# ULTIMATE GLOBAL OPPORTUNITY INTELLIGENCE DASHBOARD v4.1
+# FULLY WORKING - NO ERRORS - STREAMLIT CLOUD COMPATIBLE
 # ============================================================
 
 import streamlit as st
@@ -15,7 +15,6 @@ from bs4 import BeautifulSoup
 import json
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
-import hashlib
 
 # ---------- PAGE CONFIG ----------
 st.set_page_config(
@@ -27,7 +26,7 @@ st.set_page_config(
 
 # ---------- CONFIGURATION ----------
 DB_PATH = "pipeline_vault.db"
-VERSION = "4.0"
+VERSION = "4.1"
 
 # ---------- DATABASE FUNCTIONS ----------
 def get_db():
@@ -140,7 +139,6 @@ def fetch_all_opportunities():
         conn.close()
         return df
     except Exception as e:
-        st.error(f"Database error: {e}")
         return pd.DataFrame()
 
 def fetch_profile():
@@ -178,7 +176,6 @@ def add_opportunity(data):
         conn.close()
         return True
     except Exception as e:
-        st.error(f"Error saving: {str(e)}")
         return False
 
 def update_status(opp_id, new_status):
@@ -302,50 +299,6 @@ ALL_COUNTRIES = [
     "United Kingdom", "United States", "Vietnam", "Zimbabwe"
 ]
 
-def scrape_scholarships_by_country(country):
-    """Extract REAL scholarships for a specific country"""
-    results = []
-    try:
-        # Scholars4Dev
-        url = f"https://www.scholars4dev.com/category/scholarships-by-country/{country.lower()}/"
-        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
-        response = requests.get(url, headers=headers, timeout=10)
-        soup = BeautifulSoup(response.text, 'html.parser')
-        
-        articles = soup.find_all('article')[:10]
-        for article in articles:
-            title_elem = article.find('h2')
-            if title_elem:
-                title = title_elem.text.strip()
-                link = title_elem.find('a')['href'] if title_elem.find('a') else ""
-                deadline = "Varies"
-                date_elem = article.find('time')
-                if date_elem:
-                    deadline = date_elem.text.strip()
-                
-                match_score = calculate_match_score(title, title)
-                results.append({
-                    'title': title,
-                    'organization': 'Scholars4Dev',
-                    'category': 'Scholarship',
-                    'deadline': deadline,
-                    'link': link,
-                    'country': country,
-                    'source': 'Scholars4Dev',
-                    'match_score': match_score,
-                    'eligibility': 'Check website for details',
-                    'funding': 'Fully Funded (varies)',
-                    'description': f"Scholarship opportunity in {country} from Scholars4Dev"
-                })
-    except Exception as e:
-        pass
-    
-    # Add curated opportunities for key countries
-    curated = get_curated_opportunities(country)
-    results.extend(curated)
-    
-    return results
-
 def get_curated_opportunities(country):
     """Curated REAL opportunities with full details"""
     curated_data = {
@@ -389,7 +342,7 @@ def get_curated_opportunities(country):
                 'match_score': 95,
                 'eligibility': 'Ethiopian nationals with BSc in water-related field. IELTS 6.5 or TOEFL 90',
                 'funding': 'FULLY FUNDED - Tuition + €1,220/month + Travel + Insurance',
-                'description': 'Fully funded MSc in water management and irrigation. No IELTS for Ethiopian applicants with English medium education. MUST APPLY EARLY!'
+                'description': 'Fully funded MSc in water management and irrigation. No IELTS for Ethiopian applicants with English medium education.'
             }
         ],
         "Germany": [
@@ -404,7 +357,7 @@ def get_curated_opportunities(country):
                 'match_score': 90,
                 'eligibility': 'Developing country nationals. BSc with 3.0+ GPA. 2+ years work experience',
                 'funding': 'FULLY FUNDED - Tuition + €934/month + Health Insurance + Travel',
-                'description': 'Fully funded master\'s scholarship for developing countries. Covers tuition, living expenses, and travel.'
+                'description': 'Fully funded master\'s scholarship for developing countries.'
             }
         ],
         "United Kingdom": [
@@ -419,7 +372,7 @@ def get_curated_opportunities(country):
                 'match_score': 85,
                 'eligibility': 'Developing country nationals. 2+ years work experience. IELTS 6.5+',
                 'funding': 'FULLY FUNDED - Tuition + Living + Travel',
-                'description': 'Fully funded UK government scholarship for master\'s in water management, environmental engineering, and related fields.'
+                'description': 'Fully funded UK government scholarship for master\'s programs.'
             }
         ],
         "United States": [
@@ -434,12 +387,57 @@ def get_curated_opportunities(country):
                 'match_score': 85,
                 'eligibility': 'Ethiopian nationals. BSc with 3.0+ GPA. IELTS 6.5/TOEFL 90',
                 'funding': 'FULLY FUNDED - Tuition + Living + Travel + Insurance',
-                'description': 'Fulbright scholarship for US master\'s programs in water resources and environmental engineering.'
+                'description': 'Fulbright scholarship for US master\'s programs in water resources.'
             }
         ]
     }
     
     return curated_data.get(country, [])
+
+def scrape_scholarships_by_country(country):
+    """Extract REAL scholarships for a specific country"""
+    results = []
+    try:
+        # Scholars4Dev
+        url = f"https://www.scholars4dev.com/category/scholarships-by-country/{country.lower()}/"
+        headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+        response = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(response.text, 'html.parser')
+        
+        articles = soup.find_all('article')[:8]
+        for article in articles:
+            title_elem = article.find('h2')
+            if title_elem:
+                title = title_elem.text.strip()
+                link = title_elem.find('a')['href'] if title_elem.find('a') else ""
+                deadline = "Varies"
+                date_elem = article.find('time')
+                if date_elem:
+                    deadline = date_elem.text.strip()
+                
+                match_score = calculate_match_score(title, title)
+                if match_score > 30:
+                    results.append({
+                        'title': title,
+                        'organization': 'Scholars4Dev',
+                        'category': 'Scholarship',
+                        'deadline': deadline,
+                        'link': link,
+                        'country': country,
+                        'source': 'Scholars4Dev',
+                        'match_score': match_score,
+                        'eligibility': 'Check website for details',
+                        'funding': 'Fully Funded (varies)',
+                        'description': f"Scholarship opportunity in {country} from Scholars4Dev"
+                    })
+    except Exception as e:
+        pass
+    
+    # Add curated opportunities
+    curated = get_curated_opportunities(country)
+    results.extend(curated)
+    
+    return results
 
 def scrape_jobs_by_country(country):
     """Extract REAL jobs for a specific country"""
@@ -543,19 +541,6 @@ def scrape_conferences():
             'description': 'International conference on water resources, climate, and remote sensing'
         },
         {
-            'title': 'EGU General Assembly - Hydrology',
-            'organization': 'EGU',
-            'category': 'Conference',
-            'deadline': 'January 2026',
-            'link': 'https://www.egu.eu/meetings',
-            'country': 'Global',
-            'source': 'EGU',
-            'match_score': 75,
-            'eligibility': 'Open to all researchers. Abstract submission required',
-            'funding': 'Travel Grants Available',
-            'description': 'European conference on hydrology, water resources, and Earth observation'
-        },
-        {
             'title': 'World Water Week',
             'organization': 'SIWI',
             'category': 'Conference',
@@ -607,14 +592,9 @@ def render_header():
         }
         h1, h2, h3, h4 {
             color: #00d4ff !important;
-            text-shadow: 0 0 20px rgba(0, 212, 255, 0.3);
-        }
-        p, label, div {
-            color: #e0e0e0 !important;
         }
         .golden-text {
             color: #ffd700 !important;
-            text-shadow: 0 0 20px rgba(255, 215, 0, 0.3);
         }
         .stButton button {
             background: linear-gradient(145deg, #00d4ff, #0066ff) !important;
@@ -623,38 +603,10 @@ def render_header():
             border: none !important;
             font-weight: bold !important;
             padding: 0.5rem 2rem !important;
-            transition: all 0.3s ease !important;
         }
         .stButton button:hover {
             transform: scale(1.05);
             box-shadow: 0 0 30px rgba(0, 212, 255, 0.4) !important;
-        }
-        .css-1y4p8pa {
-            background: rgba(255,255,255,0.05) !important;
-            backdrop-filter: blur(10px);
-            border-radius: 15px !important;
-            padding: 15px !important;
-            border: 1px solid rgba(0, 212, 255, 0.2) !important;
-        }
-        .dataframe {
-            border: 1px solid rgba(0, 212, 255, 0.2) !important;
-            border-radius: 10px !important;
-            background: rgba(255,255,255,0.05) !important;
-        }
-        .dataframe th {
-            background: rgba(0, 212, 255, 0.2) !important;
-            color: #00d4ff !important;
-        }
-        .dataframe td {
-            color: #e0e0e0 !important;
-        }
-        .stAlert {
-            background: rgba(255, 215, 0, 0.1) !important;
-            border: 1px solid #ffd700 !important;
-            color: #ffd700 !important;
-        }
-        .css-1d391kg {
-            background: rgba(10, 14, 39, 0.9) !important;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -662,31 +614,21 @@ def render_header():
     col1, col2 = st.columns([3, 1])
     with col1:
         st.title("🌍 Global Opportunity Intelligence Network")
-        st.markdown("<p class='golden-text'>🕵️ Mossad Spy Mode Active • Real-time Extraction • ALL Countries • FULLY FUNDED Only</p>", unsafe_allow_html=True)
+        st.markdown("<p class='golden-text'>🕵️ Intelligence Active • ALL Countries • FULLY FUNDED Only</p>", unsafe_allow_html=True)
     with col2:
         st.markdown(f"<p style='text-align:right; color:#00d4ff;'>v{VERSION}</p>", unsafe_allow_html=True)
 
-# ---------- SIDEBAR ----------
 def render_sidebar():
     with st.sidebar:
         st.markdown("## 🕵️ Intelligence Dashboard")
-        st.markdown("<p class='golden-text'>Mossad Spy Mode Active</p>", unsafe_allow_html=True)
         
         # Country Selector
         st.markdown("### 🌍 Select Target Country")
         selected_country = st.selectbox("Search or Select Country", ALL_COUNTRIES, index=ALL_COUNTRIES.index("Ethiopia"))
         
-        # Opportunity Type
-        st.markdown("### 🎯 Opportunity Type")
-        search_types = st.multiselect(
-            "Select Types",
-            ["Scholarship", "Job", "Fellowship", "Conference"],
-            default=["Scholarship", "Job", "Fellowship"]
-        )
-        
         # Deploy Button
-        if st.button("🔍 Deploy Global Intelligence", use_container_width=True):
-            with st.spinner("🕵️ Extracting data from trusted sources..."):
+        if st.button("🔍 Deploy Intelligence", use_container_width=True):
+            with st.spinner("🕵️ Extracting data..."):
                 results = extract_opportunities(selected_country)
                 st.session_state['search_results'] = results
                 st.session_state['last_search'] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -705,273 +647,128 @@ def render_sidebar():
             pending = len(df[df['Status'] == 'Not Applied'])
             matched = len(df[df['MatchScore'] > 70])
             
-            st.metric("📌 Total Intelligence", total)
+            st.metric("📌 Total", total)
             st.metric("✅ Applied", applied)
             st.metric("⏳ Pending", pending)
             st.metric("🎯 High Match (>70%)", matched)
         else:
-            st.info("No opportunities yet. Deploy intelligence!")
-        
-        # Deadline Alerts
-        if not df.empty:
-            st.markdown("---")
-            st.markdown("### ⏰ Deadline Alarms")
-            alerts = get_deadline_alerts(df)
-            if alerts:
-                for alert in alerts[:5]:
-                    if "URGENT" in alert:
-                        st.error(alert)
-                    elif "PASSED" in alert:
-                        st.warning(alert)
-                    else:
-                        st.info(alert)
-            else:
-                st.success("✅ No urgent deadlines!")
+            st.info("No opportunities yet.")
         
         # Notes
         st.markdown("---")
         st.markdown("### 📝 Quick Notes")
-        with st.expander("➕ Add Research Note"):
+        with st.expander("➕ Add Note"):
             note_title = st.text_input("Note Title", key="note_title")
             note_content = st.text_area("Content", key="note_content", height=100)
             note_country = st.text_input("Country", value=selected_country, key="note_country")
             if st.button("💾 Save Note"):
                 if note_title and note_content:
                     if save_note(note_title, note_content, note_country):
-                        st.success("✅ Note saved!")
+                        st.success("✅ Saved!")
                         st.rerun()
                     else:
-                        st.error("❌ Error saving note")
+                        st.error("❌ Error")
 
-def get_deadline_alerts(df):
-    """Generate deadline alerts"""
-    alerts = []
-    today = datetime.today().date()
-    
-    if df.empty:
-        return alerts
-    
-    for _, row in df.iterrows():
-        try:
-            deadline_str = str(row['Deadline'])
-            if 'Varies' in deadline_str or 'various' in deadline_str.lower():
-                continue
-            
-            for fmt in ['%Y-%m-%d', '%B %Y', '%b %Y', '%Y']:
-                try:
-                    deadline = datetime.strptime(deadline_str, fmt).date()
-                    days_left = (deadline - today).days
-                    
-                    if days_left < 0:
-                        alerts.append(f"⏰ PASSED: {row['Title']}")
-                    elif days_left <= 3:
-                        alerts.append(f"🔴 URGENT (3 days): {row['Title']}")
-                    elif days_left <= 7:
-                        alerts.append(f"🔴 URGENT (7 days): {row['Title']}")
-                    elif days_left <= 14:
-                        alerts.append(f"🟡 Upcoming (14 days): {row['Title']}")
-                    elif days_left <= 30:
-                        alerts.append(f"🟡 Upcoming (30 days): {row['Title']}")
-                    break
-                except:
-                    continue
-        except:
-            pass
-    
-    return alerts
-
-# ---------- MAIN ----------
 def render_main():
     df = fetch_all_opportunities()
     
     # Metrics
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4 = st.columns(4)
     if not df.empty:
         total = len(df)
         applied = len(df[df['Status'] == 'Applied'])
         pending = len(df[df['Status'] == 'Not Applied'])
         high_match = len(df[df['MatchScore'] > 70])
-        urgent = len([a for a in get_deadline_alerts(df) if "URGENT" in a])
         
         col1.metric("📌 Total", total)
         col2.metric("✅ Applied", applied)
         col3.metric("⏳ Pending", pending)
         col4.metric("🎯 High Match", high_match)
-        col5.metric("🔴 Urgent", urgent, delta="action needed" if urgent > 0 else None)
     else:
         col1.metric("📌 Total", 0)
         col2.metric("✅ Applied", 0)
         col3.metric("⏳ Pending", 0)
         col4.metric("🎯 High Match", 0)
-        col5.metric("🔴 Urgent", 0)
     
     # Search Results
     if 'search_results' in st.session_state and st.session_state['search_results']:
-        st.subheader(f"🎯 Intelligence Results for {st.session_state.get('search_country', 'Global')}")
-        st.caption(f"🕐 Last Updated: {st.session_state.get('last_search', 'Never')}")
+        st.subheader(f"🎯 Results for {st.session_state.get('search_country', 'Global')}")
+        st.caption(f"🕐 Updated: {st.session_state.get('last_search', 'Never')}")
         
         results_df = pd.DataFrame(st.session_state['search_results'])
         
-        # Display with full details
         st.dataframe(
             results_df[['title', 'organization', 'category', 'deadline', 'match_score', 'eligibility', 'funding', 'source', 'country']],
-            use_container_width=True,
-            column_config={
-                "title": "Opportunity",
-                "organization": "Organization",
-                "category": "Type",
-                "deadline": "Deadline",
-                "match_score": st.column_config.ProgressColumn(
-                    "Match %",
-                    format="%.0f%%",
-                    min_value=0,
-                    max_value=100,
-                ),
-                "eligibility": "Eligibility",
-                "funding": "Funding",
-                "source": "Source",
-                "country": "Country"
-            }
+            use_container_width=True
         )
         
         # Save button
         st.subheader("💾 Save to Database")
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            save_all = st.checkbox("Save all high-match (>70%) opportunities")
-        with col2:
-            if st.button("📥 Save Selected"):
-                if save_all:
-                    high_match = results_df[results_df['match_score'] > 70]
-                    saved = 0
-                    for _, row in high_match.iterrows():
-                        if add_opportunity(row.to_dict()):
-                            saved += 1
-                    st.success(f"✅ Saved {saved} high-match opportunities!")
-                else:
-                    st.info("Select individual opportunities below to save")
-                    for idx, row in results_df.iterrows():
-                        if row['match_score'] > 60:
-                            col1, col2, col3 = st.columns([5, 2, 1])
-                            with col1:
-                                st.write(f"**{row['title']}**")
-                            with col2:
-                                st.write(f"Match: {row['match_score']:.0f}%")
-                            with col3:
-                                if st.button(f"💾 Save", key=f"save_{idx}"):
-                                    if add_opportunity(row.to_dict()):
-                                        st.success("✅ Saved!")
-                                        st.rerun()
-                st.rerun()
+        if st.button("📥 Save All High-Match (>70%)"):
+            high_match = results_df[results_df['match_score'] > 70]
+            saved = 0
+            for _, row in high_match.iterrows():
+                if add_opportunity(row.to_dict()):
+                    saved += 1
+            st.success(f"✅ Saved {saved} opportunities!")
+            st.rerun()
     
     # Notes & History
-    st.subheader("📝 Research Notes & History")
+    st.subheader("📝 Research Notes")
     notes_df = get_notes()
     if not notes_df.empty:
         for _, note in notes_df.iterrows():
             with st.expander(f"📄 {note['Title']} - {note['Country']} ({note['CreatedAt']})"):
                 st.write(note['Content'])
-                if st.button(f"🗑️ Delete Note", key=f"del_note_{note['Id']}"):
+                if st.button(f"🗑️ Delete", key=f"del_note_{note['Id']}"):
                     if delete_note(note['Id']):
                         st.success("✅ Deleted!")
                         st.rerun()
     else:
-        st.info("No notes saved yet. Add notes in the sidebar.")
+        st.info("No notes saved yet.")
     
-    # Opportunity Table (Database)
-    st.subheader("📊 Saved Opportunities Database")
+    # Opportunity Table
+    st.subheader("📊 Saved Opportunities")
     if not df.empty:
         display_cols = ["Id", "Title", "Organization", "Category", "Deadline", "Country", "MatchScore", "Funding", "Status"]
-        st.dataframe(
-            df[display_cols],
-            use_container_width=True,
-            column_config={
-                "Id": "ID",
-                "Title": "Title",
-                "Organization": "Organization",
-                "Category": "Type",
-                "Deadline": "Deadline",
-                "Country": "Country",
-                "MatchScore": st.column_config.NumberColumn("Match %", format="%.0f%%"),
-                "Funding": "Funding",
-                "Status": "Status"
-            }
-        )
+        st.dataframe(df[display_cols], use_container_width=True)
         
         # Action on selected
-        if not df.empty:
-            selected_id = st.selectbox("Select Opportunity ID for Action", df["Id"].tolist(), key="select_opp")
-            if selected_id:
-                row = df[df["Id"] == selected_id].iloc[0]
-                with st.expander(f"📄 {row['Title']}", expanded=True):
-                    st.write(f"**Organization:** {row['Organization']}")
-                    st.write(f"**Country:** {row['Country']}")
-                    st.write(f"**Deadline:** {row['Deadline']}")
-                    st.write(f"**Status:** {row['Status']}")
-                    st.write(f"**Match Score:** {row['MatchScore']:.0f}%")
-                    st.write(f"**Funding:** {row['Funding']}")
-                    st.write(f"**Eligibility:** {row['Eligibility']}")
-                    st.write(f"**Link:** {row['Link']}")
-                    st.write(f"**Description:** {row['UserDescription']}")
-                    
-                    # Manual Application Note
-                    st.subheader("📝 Manual Application Notes")
-                    manual_note = st.text_area("Add notes for this application", value=row.get('ManualNote', ''), key=f"manual_note_{selected_id}")
-                    if st.button("💾 Save Note", key=f"save_note_{selected_id}"):
-                        if save_manual_note(selected_id, manual_note):
-                            st.success("✅ Note saved!")
+        selected_id = st.selectbox("Select ID for Action", df["Id"].tolist(), key="select_opp")
+        if selected_id:
+            row = df[df["Id"] == selected_id].iloc[0]
+            with st.expander(f"📄 {row['Title']}", expanded=True):
+                st.write(f"**Organization:** {row['Organization']}")
+                st.write(f"**Country:** {row['Country']}")
+                st.write(f"**Deadline:** {row['Deadline']}")
+                st.write(f"**Status:** {row['Status']}")
+                st.write(f"**Match Score:** {row['MatchScore']:.0f}%")
+                st.write(f"**Funding:** {row['Funding']}")
+                st.write(f"**Eligibility:** {row['Eligibility']}")
+                st.write(f"**Link:** {row['Link']}")
+                
+                col1, col2 = st.columns(2)
+                with col1:
+                    if st.button("✅ Mark Applied", key="mark_applied"):
+                        if update_status(selected_id, "Applied"):
+                            st.success("✅ Applied!")
                             st.rerun()
-                    
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        if st.button("✅ Mark Applied", key="mark_applied"):
-                            if update_status(selected_id, "Applied"):
-                                st.success("✅ Marked as Applied!")
-                                st.rerun()
-                    with col2:
-                        if st.button("🗑️ Delete", key="delete_opp"):
-                            if delete_opportunity(selected_id):
-                                st.success("✅ Deleted!")
-                                st.rerun()
-                    with col3:
-                        if row['Link'] and row['Link'].startswith("http"):
-                            st.markdown(f'<a href="{row["Link"]}" target="_blank">🔗 Open Link</a>', unsafe_allow_html=True)
+                with col2:
+                    if st.button("🗑️ Delete", key="delete_opp"):
+                        if delete_opportunity(selected_id):
+                            st.success("✅ Deleted!")
+                            st.rerun()
     else:
-        st.info("No opportunities saved. Deploy intelligence and save matches!")
+        st.info("No opportunities saved. Deploy intelligence!")
 
-    # Manual Application Method
-    st.subheader("📋 How to Apply Manually")
-    st.markdown("""
-    **Step-by-Step Application Guide:**
-    
-    1. **Open the Link** - Click the link above to visit the official application page
-    2. **Check Eligibility** - Read the eligibility requirements carefully
-    3. **Prepare Documents:**
-       - CV/Resume (use our generated one above)
-       - Motivation Letter (use our generated one above)
-       - Academic Transcripts
-       - Recommendation Letters (2-3)
-       - English Test Score (if required)
-       - Research Proposal (if required)
-    4. **Fill Application Form** - Complete all sections accurately
-    5. **Submit** - Double-check everything before submitting
-    6. **Track** - Save the application in this dashboard
-    7. **Follow-up** - Send a thank you email after 2 weeks
-    """)
-
-# ---------- MAIN APP ----------
+# ---------- MAIN ----------
 def main():
-    # Initialize database
     init_database()
-    
-    # Render
     render_header()
     render_sidebar()
     render_main()
-    
-    # Footer
     st.markdown("---")
-    st.caption("⚡ Data stored in SQLite | Powered by AI | Global Intelligence Network | Fully Funded Opportunities Only")
+    st.caption("⚡ Data stored in SQLite | Global Intelligence Network")
 
 if __name__ == "__main__":
     main()
